@@ -6,9 +6,11 @@
 import io
 import os
 import zipfile
-
+import inspect
+import sys
 from tornado import gen, web, escape
 from tornado.log import app_log
+from pathlib import Path
 
 from ..base.handlers import (
     IPythonHandler, FilesRedirectHandler,
@@ -32,6 +34,7 @@ def respond_zip(handler, name, output, resources):
     Returns True if it has served a zip file, False if there are no resource
     files, in which case we serve the plain output file.
     """
+
     # Check if we have resource files we need to zip
     output_files = resources.get('outputs', None)
     if not output_files:
@@ -88,10 +91,11 @@ class NbconvertFileHandler(IPythonHandler):
     @web.authenticated
     @gen.coroutine
     def get(self, format, path):
-
         exporter = get_exporter(format, config=self.config, log=self.log)
+        self.log.info(exporter)
 
         path = path.strip('/')
+
         # If the notebook relates to a real file (default contents manager),
         # give its path to nbconvert.
         if hasattr(self.contents_manager, '_get_os_path'):
@@ -119,7 +123,12 @@ class NbconvertFileHandler(IPythonHandler):
                 "name": nb_title,
                 "modified_date": mod_date
             },
-            "config_dir": self.application.settings['config_dir']
+            "conversion_options": {
+                'option': self.get_argument('option', 'false'),
+                'cell_range': self.get_argument('cell_range', 'false')
+                # 'unwanted_cells': self.get_argument('unwanted_cells', 'false')
+            },
+            "config_dir": self.application.settings['config_dir'],
         }
 
         if ext_resources_dir:
@@ -196,5 +205,5 @@ _format_regex = r"(?P<format>\w+)"
 default_handlers = [
     (r"/nbconvert/%s" % _format_regex, NbconvertPostHandler),
     (r"/nbconvert/%s%s" % (_format_regex, path_regex),
-         NbconvertFileHandler),
+     NbconvertFileHandler),
 ]

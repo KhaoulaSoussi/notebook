@@ -104,6 +104,7 @@ define([
         this.events = options.events;
         this.tooltip = options.tooltip;
         this.config = options.config;
+        this.index = options.index;
         this.class_config = new configmod.ConfigWithDefaults(this.config,
                                         CodeCell.options_default, 'CodeCell');
 
@@ -158,15 +159,14 @@ define([
     CodeCell.prototype.create_element = function () {
         Cell.prototype.create_element.apply(this, arguments);
         var that = this;
-
         var cell =  $('<div></div>').addClass('cell code_cell');
         cell.attr('tabindex','2');
 
         var input = $('<div></div>').addClass('input');
         this.input = input;
-
+        var cell_index = $('<div style="font-family:courier; font-size: medium; color: black; margin-left: 5px; margin-top: 3px;"></div>').addClass('cell_index');
+        cell_index.html(this.index);
         var prompt_container = $('<div/>').addClass('prompt_container');
-
         var run_this_cell = $('<div></div>').addClass('run_this_cell');
         run_this_cell.prop('title', 'Run this cell');
         run_this_cell.append('<i class="fa-step-forward fa"></i>');
@@ -176,10 +176,9 @@ define([
         });
 
         var prompt = $('<div/>').addClass('prompt input_prompt');
-        
         var inner_cell = $('<div/>').addClass('inner_cell');
         this.celltoolbar = new celltoolbar.CellToolbar({
-            cell: this, 
+            cell: this,
             notebook: this.notebook});
         inner_cell.append(this.celltoolbar.element);
         var input_area = $('<div/>').addClass('input_area').attr("aria-label", i18n.msg._("Edit code here"));
@@ -190,17 +189,20 @@ define([
             if (that.keyboard_manager) {
                 that.keyboard_manager.enable();
             }
-
             that.code_mirror.setOption('readOnly', !that.is_editable());
         });
+        var cell_export = this.add_checkboxes();
         this.code_mirror.on('keydown', $.proxy(this.handle_keyevent,this));
         $(this.code_mirror.getInputField()).attr("spellcheck", "false");
         inner_cell.append(input_area);
         prompt_container.append(prompt).append(run_this_cell);
         input.append(prompt_container).append(inner_cell);
+        input.append(cell_index).append(prompt_container).append(inner_cell);
+        input.append(prompt_container).append(inner_cell).append(cell_export);
 
         var output = $('<div></div>');
         cell.append(input).append(output);
+
         this.element = cell;
         this.output_area = new outputarea.OutputArea({
             config: this.config,
@@ -210,6 +212,7 @@ define([
             keyboard_manager: this.keyboard_manager,
         });
         this.completer = new completer.Completer(this, this.events);
+        // console.log(this.code_mirror.doc.children[0]);
     };
 
     /** @method bind_events */
@@ -457,6 +460,7 @@ define([
 
     CodeCell.prototype.render = function () {
         var cont = Cell.prototype.render.apply(this, arguments);
+        this.set_checkbox_attributes();
         // Always execute, even if we are already in the rendered state
         return cont;
     };
@@ -525,8 +529,62 @@ define([
 
         // This HTML call is okay because the user contents are escaped.
         this.element.find('div.input_prompt').html(prompt_html);
+
         this.events.trigger('set_dirty.Notebook', {value: true});
     };
+
+    CodeCell.prototype.add_checkboxes = function (){
+        var cell_export = $('<div>' +
+            '               <label id="label1" for="checkbox-option1" class="checkbox-option" style="margin-right: 0px;\n margin-left: 4px;">\n' +
+            '                    <input type="checkbox" name="checkbox-field" id="checkbox-option1" class="checkbox-input" value="cell" onchange="checkbox_handler(this.id, this.value)">\n' +
+            '                    <div class="checkbox-checkbox help-tip">' +
+            '                           <p>Include this cell when exporting the notebook into PDF.</p>' +
+            '                    </div>\n' +
+            '                    cell\n' +
+            '                </label>\n' +
+            '                <label id="label2"  for="checkbox-option2" class="checkbox-option" style="margin-right: 0px;\n margin-left: 4px;"> \n' +
+            '                    <input type="checkbox" name="checkbox-field" id="checkbox-option2" class="checkbox-input" value="from" onchange="checkbox_handler(this.id, this.value)">\n' +
+            '                    <div class="checkbox-checkbox help-tip">' +
+            '                           <p>Create a cell range starting this cell. The cell range will be included when exporting the notebook into PDF.</p>' +
+            '                    </div>\n' +
+            '                    from\n' +
+            '                </label>\n' +
+            '                <label id="label3" for="checkbox-option3" class="checkbox-option" style="margin-right: 0px;\n margin-left: 4px;"> \n' +
+            '                    <input type="checkbox" name="checkbox-field" id="checkbox-option3" class="checkbox-input" value="to" onchange="checkbox_handler(this.id, this.value)" disabled>\n' +
+            '                    <div class="checkbox-checkbox help-tip">' +
+            '                           <p>Close a cell range that you started with a "from" earlier.</p>' +
+            '                    </div>\n' +
+            '                    to\n' +
+            '                </label>' +
+            '               </div>').addClass('export');
+        return cell_export;
+    }
+
+    CodeCell.prototype.set_checkbox_attributes = function(){
+        var cell_index = this.notebook.ncells();
+        if(cell_index === 1){
+            document.getElementById("label3").remove();
+        }
+        try{
+            document.getElementById("label1").id = "label1-" + cell_index;
+            document.getElementById("label1-" + cell_index).htmlFor = "checkbox-option1-" + cell_index;
+            document.getElementById("checkbox-option1").name = "checkbox-field-" + cell_index;
+            document.getElementById("checkbox-option1").id = "checkbox-option1-" + cell_index;
+
+            document.getElementById("label2").id = "label2-" + cell_index;
+            document.getElementById("label2-" + cell_index).htmlFor = "checkbox-option2-" + cell_index;
+            document.getElementById("checkbox-option2").name = "checkbox-field-" + cell_index;
+            document.getElementById("checkbox-option2").id = "checkbox-option2-" + cell_index;
+            if(cell_index !== 1) {
+                document.getElementById("label3").id = "label3-" + cell_index;
+                document.getElementById("label3-" + cell_index).htmlFor = "checkbox-option3-" + cell_index;
+                document.getElementById("checkbox-option3").name = "checkbox-field-" + cell_index;
+                document.getElementById("checkbox-option3").id = "checkbox-option3-" + cell_index;
+            }
+        }catch (e) {
+            console.log(e);
+        }
+    }
 
 
     CodeCell.prototype.clear_input = function () {

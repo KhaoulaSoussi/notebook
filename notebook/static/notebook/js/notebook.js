@@ -1298,7 +1298,8 @@ define([
                 config: this.config, 
                 keyboard_manager: this.keyboard_manager, 
                 notebook: this,
-                tooltip: this.tooltip
+                tooltip: this.tooltip,
+                index: index + 1
             };
             switch(type) {
             case 'code':
@@ -2864,6 +2865,7 @@ define([
     };
 
     Notebook.prototype.save_notebook_as = function() {
+        console.log("HERE");
         var that = this;
         var current_dir = $('body').attr('data-notebook-path').split('/').slice(0, -1).join("/");
         current_dir = current_dir? current_dir + "/": "";
@@ -2914,6 +2916,7 @@ define([
                             var start = new Date().getTime();
                             return that.contents.save(nb_path, model)
                                 .then(function(data) {
+                                    console.log("Data is: " + data.name, data.path);
                                     d.modal('hide');
                                     that.writable = true;
                                     that.notebook_name = data.name;

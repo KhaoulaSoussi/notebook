@@ -111,13 +111,13 @@ define([
     };
 
     MenuBar.prototype._new_window = function(url) {
-        var w = window.open('', IPython._target);
+        // Slight change in this method to make the new tab close automatically after the conversion
         if (this.notebook.dirty && this.notebook.writable) {
             this.notebook.save_notebook().then(function() {
-                w.location = url;
+                window.open(url, IPython._target);
             });
         } else {
-            w.location = url;
+            window.open(url, IPython._target);
         }
     };
     
@@ -133,7 +133,7 @@ define([
         this._new_window(url);
     };
 
-    MenuBar.prototype._nbconvert = function (format, download) {
+    MenuBar.prototype._nbconvert = function (format, download, option, cell_range) {
         download = download || false;
         var notebook_path = utils.encode_uri_components(this.notebook.notebook_path);
         var url = utils.url_path_join(
@@ -141,8 +141,7 @@ define([
             'nbconvert',
             format,
             notebook_path
-        ) + "?download=" + download.toString();
-        
+        ) + "?download=" + download.toString() + "&option=" + option + "&cell_range=" + cell_range;
         this._new_window(url);
     };
 
@@ -195,7 +194,82 @@ define([
         });
 
         this.element.find('#download_menu li').click(function (ev) {
-            that._nbconvert(ev.target.parentElement.getAttribute('id').substring(9), true);
+            if(ev.target.parentElement.getAttribute('id').substring(9) === 'pdf'){
+                var auto_cell_range = "";
+                var i = 1;
+                while(true){
+                    try{
+                        if(document.getElementById("checkbox-option1-" + i).checked || i !== 1 && document.getElementById("checkbox-option3-" + i).checked){
+                            auto_cell_range += i + ",";
+                        }
+                        else if(document.getElementById("checkbox-option2-" + i).checked){
+                            auto_cell_range += i;
+                            var j = i + 1;
+                            while(document.getElementById("checkbox-option1-" + j).checked){
+                                i++;
+                                j++;
+                            }
+                            auto_cell_range += "-";
+                        }
+                        else{
+                            // You can here keep track of the unwanted cells if applicable
+                        }
+                    }
+                    catch(e){
+                        break;
+                    }
+                    i++;
+                }
+                auto_cell_range = auto_cell_range.slice(0, -1);     // Remove trailing comma
+
+                document.querySelector(".bg-modal-convert1").style.display = 'flex';
+                document.querySelector(".bg-modal-convert2").style.display = 'flex';
+                var form  = document.getElementById('export');
+                if(auto_cell_range.length > 0){
+                    document.getElementById('cell-range').innerHTML = auto_cell_range;
+                }
+                else{
+                    document.getElementById('cell-range').innerHTML = "All Cells";
+                }
+                form.addEventListener('submit', (event) => {
+                    var options = form.elements['conv-radio-field'];
+                    var flag = 0;
+                    var option;
+                    for(var i = 0; i < options.length; i++){
+                        if(options[i].checked){
+                            flag = 1;
+                            if(options[i].value === 'Exclude Code'){
+                                option = 'exclude_input';
+                            }
+                            else if(options[i].value === 'Exclude Output'){
+                                option = 'exclude_output';
+                            }
+                            else{
+                                option = 'all';
+                            }
+                        }
+                    }
+                    if(flag === 0){
+                        option = 'all';
+                    }
+
+                    if(auto_cell_range.length > 0){
+                        that._nbconvert(ev.target.parentElement.getAttribute('id').substring(9), true, option, auto_cell_range);
+                    }
+                    else{
+                        // If the user did not select any cells, that means they want all
+                        that._nbconvert(ev.target.parentElement.getAttribute('id').substring(9), true, option, "");
+                    }
+
+                });
+                document.querySelector('.cancel').addEventListener('click', function(){
+                    document.querySelector(".bg-modal-convert1").style.display = 'none';
+                    document.querySelector(".bg-modal-convert2").style.display = 'none';
+                });
+            }
+            else{
+                that._nbconvert(ev.target.parentElement.getAttribute('id').substring(9), true);
+            }
         });
 
         this.events.on('trust_changed.Notebook', function (event, trusted) {

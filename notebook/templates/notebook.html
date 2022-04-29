@@ -10,6 +10,188 @@
 <script type="text/javascript">
 // MathJax disabled, set as null to distinguish from *missing* MathJax,
 // where it will be undefined, and should prompt a dialog later.
+
+let ranges = [];
+function upcoming_cells_checkbox_handler(cell_bool, from_bool, to_bool, start){
+    let i = start + 1;
+    try {
+        while(!document.getElementById("checkbox-option2-" + i).checked){
+            // Disable the "Cell" and the "from" checkboxes and enable the "to" checkbox for all cells before another from-to range
+            checkboxes_switch(cell_bool, from_bool, to_bool, i);
+            i++;
+        }
+    }catch (e) {
+        // We'll only fall here once j exceeds the number of cells
+    }
+}
+
+function checkboxes_switch(cell_bool, from_bool, to_bool, i){
+    document.getElementById("checkbox-option1-" + i).disabled = cell_bool;
+    document.getElementById("checkbox-option2-" + i).disabled = from_bool;
+    document.getElementById("checkbox-option3-" + i).disabled = to_bool;
+}
+
+// This function checks if a cell id is between a from-to cell range
+function is_in_range(id){
+    for(let idx in ranges){
+        let start = ranges[idx].from;
+        let end = ranges[idx].to;
+        if(id > start && id < end){
+            let range = ranges[idx];
+            ranges.splice(idx,1);   // Remove the range because another one will be created by the caller
+            return range;
+        }
+    }
+    return -1;
+}
+
+function checkbox_handler(id, value) {
+    let elts = id.split('-');
+    let j;
+    id = elts.slice(-1)[0];
+    id = parseInt(id);
+    if(value === 'from'){
+        // If the "from" of this cell is checked:
+        if(document.getElementById("checkbox-option2-" + id).checked){
+            // Uncheck any other option of this cell
+            document.getElementById("checkbox-option1-" + id).checked = false;
+            if(id !== 1)    // This is because the first cell does not have the "to" checkbox
+                document.getElementById("checkbox-option3-" + id).checked = false;
+            upcoming_cells_checkbox_handler(true, true, false, id);
+        }
+        // If the "from" of this cell is unchecked, just revert what it did when it was checked
+        else{
+            upcoming_cells_checkbox_handler(false, false, true, id);
+        }
+    }
+    else if(value === 'to'){
+        // If the "to" is checked
+        if(document.getElementById("checkbox-option3-" + id).checked){
+            let start;
+            // Uncheck all other options of this cell
+            document.getElementById("checkbox-option1-" + id).checked = false;
+            document.getElementById("checkbox-option2-" + id).checked = false;
+            // Check if the selected "to" belongs to a cell within from-to range; that means we're trying to shorten the from-to range
+            let range = is_in_range(id);
+            console.log(range);
+            if(range !== -1){
+                j = id;
+                // uncheck the "cell" option for all cells between the new "to" and the old "to", and enable their "from" checkbox
+                do{
+                    j++;
+                    console.log(range.to)
+                    console.log(j)
+                    document.getElementById("checkbox-option1-" + j).checked = false;
+                    document.getElementById("checkbox-option2-" + j).disabled = false;
+                    // Uncheck the old "to"
+                    if(j === range.to)
+                        document.getElementById("checkbox-option3-" + j).checked = false;
+                }while(j !== range.to);
+                start = range.from;
+            }
+            // Else, this selected "to" is either meant to close a selected "from" or to extend a preselected from-to range
+            else{
+                // Disable the "Cell" and the "from" checkboxes and enable the "to" checkbox for all cells before another from-to range
+                upcoming_cells_checkbox_handler(false, false, false, id);
+                j = id;
+                // While a "from" is not found, do the following on intermediate cells
+                do{
+                    try{
+                        j--;
+                        if(document.getElementById("checkbox-option2-" + j).checked){
+                            // The start of the range cannot be unchecked or changed to another checkbox option
+                            document.getElementById("checkbox-option1-" + j).disabled = true;
+                            document.getElementById("checkbox-option2-" + j).disabled = true;
+                            document.getElementById("checkbox-option3-" + j).disabled = true;
+                            break;
+                        }
+                        document.getElementById("checkbox-option1-" + j).disabled = false;     // Enable the "cell" option as it can be deselected by the user later
+                        document.getElementById("checkbox-option1-" + j).checked = true;       // Check the "cell" option
+                        // If a "to" is encountered uncheck it and break
+                        // This is the case where the user tries to extend a cell range
+                        if(document.getElementById("checkbox-option3-" + j).checked){
+                            document.getElementById("checkbox-option3-" + j).checked = false;
+                            // Delete from the ranges array the range that has j as the ending cell
+                            let del_idx = ranges.findIndex(item => item.to === j);
+                            ranges.splice(del_idx, 1);
+                            break;
+                        }
+                    }catch (e) {
+                        break;
+                    }
+                }while(!document.getElementById("checkbox-option2-" + j).checked);
+                start = j;
+            }
+            range = {from: start, to: id};
+            ranges.push(range);
+        }
+        //If the "to" is unchecked
+        else{
+            j = id;
+            do{
+                try{
+                    j--;
+                    if(document.getElementById("checkbox-option2-" + j).checked){
+                        document.getElementById("checkbox-option2-" + j).checked = false;
+                        document.getElementById("checkbox-option1-" + j).disabled = false;
+                        break;
+                    }
+                    document.getElementById("checkbox-option1-" + j).checked = false;   //Uncheck "cell option"
+                    document.getElementById("checkbox-option3-" + j).disabled = true;   //Disable the "to option"
+                }catch (e) {
+                    break;
+                }
+            }while(!document.getElementById("checkbox-option2-" + j).checked);
+            // Remove the range from the ranges array
+            let range_idx = ranges.findIndex(item => item.from === j && item.to === id);
+            ranges.splice(range_idx,1);
+            upcoming_cells_checkbox_handler(false, false, true, id);
+        }
+    }
+    else if(value === 'cell'){
+        if(document.getElementById("checkbox-option1-" + id).checked) {
+            // Uncheck any other option of this cell
+            document.getElementById("checkbox-option2-" + id).checked = false;
+            if (id !== 1)
+                document.getElementById("checkbox-option3-" + id).checked = false;
+            // Enable the "Cell" and the "from" checkboxes and disable the "to" checkbox for all cells before another from-to range
+            upcoming_cells_checkbox_handler(false, false, true, id);
+        }
+        else{
+            // Check if the unchecked cell is within a from-to range
+            var range = is_in_range(id);
+            if(range !== -1){
+                var before = id - 1;
+                var after = id + 1;
+                // If the previous cell has a "from" checked, then uncheck that and select "cell" instead
+                if(before === range.from){
+                    document.getElementById("checkbox-option2-" + before).checked = false;
+                    document.getElementById("checkbox-option1-" + before).checked = true;
+                }
+                // Otherwise, if the previous cell has a "cell" checked, then uncheck that and select "to" instead
+                else if(document.getElementById("checkbox-option1-" + before).checked){
+                    document.getElementById("checkbox-option1-" + before).checked = false;
+                    document.getElementById("checkbox-option3-" + before).checked = true;
+                    let new_range = {from: range.from, to: before};
+                    ranges.push(new_range);
+                }
+                // If the next cell has a "to" checked, then uncheck that and select "cell" instead
+                if(after === range.to){
+                    document.getElementById("checkbox-option3-" + after).checked = false;
+                    document.getElementById("checkbox-option1-" + after).checked = true;
+                }
+                // Otherwise, if the next cell has a "cell" checked, then uncheck that and select "from" instead
+                else if(document.getElementById("checkbox-option1-" + after).checked){
+                    document.getElementById("checkbox-option1-" + after).checked = false;
+                    document.getElementById("checkbox-option2-" + after).checked = true;
+                    let new_range = {from: after, to: range.to};
+                    ranges.push(new_range);
+                }
+            }
+        }
+    }
+}
+
 window.mathjax_url = "{{mathjax_url}}";
 </script>
 
@@ -339,6 +521,8 @@ data-notebook-path="{{notebook_path | urlencode}}"
 </div>
 
 <div class="lower-header-bar"></div>
+
+<div class="bg-modal-convert1"></div>
 {% endblock header %}
 
 {% block site %}
@@ -350,8 +534,85 @@ data-notebook-path="{{notebook_path | urlencode}}"
     </div>
 </div>
 
+<!--<div class="bg-modal-convert2">
+    <div class="options-popup">
+        <div class="convert-title-container">Convert Notebook into PDF</div>
+        <form action="" id="export">
+            <div class="popup-body">
+                <label for="conv-radio-option1" class="radio-option">
+                    <input type="radio" name="conv-radio-field" id="conv-radio-option1" class="radio-input" value="Exclude Code">
+                    <div class="radio-radio"></div>
+                    Exclude Code
+                </label>
+                <label for="conv-radio-option2" class="radio-option">
+                    <input type="radio" name="conv-radio-field" id="conv-radio-option2" class="radio-input" value="Exclude Output">
+                    <div class="radio-radio"></div>
+                    Exclude Output
+                </label>
+                <label for="conv-radio-option3" class="radio-option">
+                    <input type="radio" name="conv-radio-field" id="conv-radio-option3" class="radio-input" value="Keep All" checked>
+                    <div class="radio-radio"></div>
+                    Keep All
+                </label>
+                <div class="cell-range-container" style="font-family: monospace">
+                    Cell Range:
+                    <div id="cell-range" style="margin-left: 15px; font-family: monospace; font-size: 15px"></div>
+                </div>
+            </div>
+            <a style="visibility: hidden" id="download" href="#" download="option.txt" target="_blank"></a>
+            <div class="popup-bottom">
+                <button type="submit" class="export-btn" style="font-size: 15px; margin-right: 5px; font-family: monospace">Export</button>
+                <button type="button" class="cancel" style="font-size: 15px; margin-left: 5px; font-family: monospace">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>-->
+
+<div class="bg-modal-convert2">
+    <div class="modal-content" style="width: 500px">
+        <div class="modal-header">
+            <h4 class="modal-title">Convert Notebook into PDF</h4>
+        </div>
+        <form action="" id="export">
+            <div class="modal-body popup-body">
+                <label for="conv-radio-option1" class="radio-option">
+                    <input type="radio" name="conv-radio-field" id="conv-radio-option1" class="radio-input" value="Exclude Code">
+                    <div class="radio-radio"></div>
+                    Exclude Code
+                </label>
+                <label for="conv-radio-option2" class="radio-option">
+                    <input type="radio" name="conv-radio-field" id="conv-radio-option2" class="radio-input" value="Exclude Output">
+                    <div class="radio-radio"></div>
+                    Exclude Output
+                </label>
+                <label for="conv-radio-option3" class="radio-option">
+                    <input type="radio" name="conv-radio-field" id="conv-radio-option3" class="radio-input" value="Keep All" checked>
+                    <div class="radio-radio"></div>
+                    Keep All
+                </label>
+                <!--<div class="cell-range-container">
+                    Cell Range:
+                    <input type="text" class="cell-range-field" id="cell-range">
+                    <div class="help-tip">
+                        <p>Enter cell numbers and/or cell ranges separated by commas (e.g. 2, 4-16, 19)</p>
+                    </div>
+                </div>-->
+                <div class="cell-range-container" style="font-family: monospace">
+                    Cell Range:
+                    <div id="cell-range" style="margin-left: 15px; font-family: monospace; font-size: 15px"></div>
+                </div>
+            </div>
+            <a style="visibility: hidden" id="download" href="#" download="option.txt" target="_blank"></a>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-default btn-sm btn-primary">Export</button>
+                <button type="button" class="btn btn-default btn-sm cancel">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 {% endblock %}
+
 
 {% block after_site %}
 
