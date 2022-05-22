@@ -234,25 +234,24 @@ define([
                 form.addEventListener('submit', (event) => {
                     var options = form.elements['conv-radio-field'];
                     var flag = 0;
-                    var option;
+                    var option = "";
                     for(var i = 0; i < options.length; i++){
-                        if(options[i].checked){
+                        if(!options[i].checked){   // If the option is unchecked
                             flag = 1;
-                            if(options[i].value === 'Exclude Code'){
-                                option = 'exclude_input';
+                            if(options[i].value === "Code"){
+                                option += "exclude_input+";
                             }
-                            else if(options[i].value === 'Exclude Output'){
-                                option = 'exclude_output';
+                            else if(options[i].value === "Output"){
+                                option += "exclude_output+";
                             }
-                            else{
-                                option = 'all';
+                            else if(options[i].value === "Markdown"){
+                                option += "exclude_markdown+";
                             }
                         }
                     }
-                    if(flag === 0){
-                        option = 'all';
+                    if(flag === 0){         // Meaning all options are checked
+                        option = "all";
                     }
-
                     if(auto_cell_range.length > 0){
                         that._nbconvert(ev.target.parentElement.getAttribute('id').substring(9), true, option, auto_cell_range);
                     }
@@ -260,7 +259,6 @@ define([
                         // If the user did not select any cells, that means they want all
                         that._nbconvert(ev.target.parentElement.getAttribute('id').substring(9), true, option, "");
                     }
-
                 });
                 document.querySelector('.cancel').addEventListener('click', function(){
                     document.querySelector(".bg-modal-convert1").style.display = 'none';

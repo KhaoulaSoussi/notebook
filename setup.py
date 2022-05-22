@@ -39,7 +39,7 @@ Python {py} detected.
 {pip}
 """.format(py=sys.version_info, pip=pip_message )
 
-    print(error, file=sys.stderr)
+    # print(error, file=sys.stderr)
     sys.exit(1)
 
 # At least we're on the python version we need, move on.

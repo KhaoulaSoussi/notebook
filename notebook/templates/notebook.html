@@ -575,20 +575,21 @@ data-notebook-path="{{notebook_path | urlencode}}"
         </div>
         <form action="" id="export">
             <div class="modal-body popup-body">
+                <div style="font-family: monospace">What do you want to export?</div>
                 <label for="conv-radio-option1" class="radio-option">
-                    <input type="radio" name="conv-radio-field" id="conv-radio-option1" class="radio-input" value="Exclude Code">
+                    <input type="checkbox" name="conv-radio-field" id="conv-radio-option1" class="radio-input" value="Code" checked>
                     <div class="radio-radio"></div>
-                    Exclude Code
+                    Code
                 </label>
                 <label for="conv-radio-option2" class="radio-option">
-                    <input type="radio" name="conv-radio-field" id="conv-radio-option2" class="radio-input" value="Exclude Output">
+                    <input type="checkbox" name="conv-radio-field" id="conv-radio-option2" class="radio-input" value="Output" checked>
                     <div class="radio-radio"></div>
-                    Exclude Output
+                    Output
                 </label>
                 <label for="conv-radio-option3" class="radio-option">
-                    <input type="radio" name="conv-radio-field" id="conv-radio-option3" class="radio-input" value="Keep All" checked>
+                    <input type="checkbox" name="conv-radio-field" id="conv-radio-option3" class="radio-input" value="Markdown" checked>
                     <div class="radio-radio"></div>
-                    Keep All
+                    Markdown
                 </label>
                 <!--<div class="cell-range-container">
                     Cell Range:
